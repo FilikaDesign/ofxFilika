@@ -22,7 +22,7 @@ public:
 	string imgPath;
 	string senderEmailAddress;
 	string contentText;
-
+	ofJson contentJson;
 
 	ofEventListener smtpDeliveryListener;
 	ofEventListener smtpExceptionListener;
@@ -37,7 +37,7 @@ public:
 		//ofx::SMTP::GmailSettings settings("filikatasarim@gmail.com", "02082011");
 			// Load credentials and account settings from an xml or json file.
 		//auto settings = ofxSMTP::Settings::loadFromXML("example-smtp-account-settings.xml");
-	    auto settings = ofxSMTP::Settings::loadFromJSON("example-smtp-account-settings.json");
+	    auto settings = ofxSMTP::Settings::loadFromJSON("smtp-account-settings.json");
 
 		// See SMTP::Settings for extensive configuration options.
 
@@ -47,6 +47,11 @@ public:
 		// Register event callbacks for message delivery (or failure) events
 		smtpDeliveryListener = smtp.events.onSMTPDelivery.newListener(this, &ofxFilikaEmailSender::onSMTPDelivery);
 		smtpExceptionListener = smtp.events.onSMTPException.newListener(this, &ofxFilikaEmailSender::onSMTPException);
+
+		contentJson = ofLoadJson("mail-content.json");
+		//ofLog() << "sender: " << contentJson["sender"];
+		//ofLog() << "subject: " << contentJson["subject"];
+		//ofLog() << "signatureImage: " << contentJson["signatureImage"];
 	}
 
 	/// Start the thread.
@@ -115,15 +120,17 @@ public:
 		auto message = std::make_shared<Poco::Net::MailMessage>();
 
 		// Encode the sender and set it.
-		message->setSender(Poco::Net::MailMessage::encodeWord("filikatasarim@gmail.com",
+		message->setSender(Poco::Net::MailMessage::encodeWord(contentJson["sender"],
 			"UTF-8"));
 
 		// Mark the primary recipient and add them.
 		message->addRecipient(Poco::Net::MailRecipient(Poco::Net::MailRecipient::PRIMARY_RECIPIENT,
 			senderEmailAddress));
 
+		
+
 		// Encode the subject and set it.
-		message->setSubject(("Ziraat Müzesi"));
+		message->setSubject(Poco::Net::MailMessage::encodeWord(contentJson["subject"], "UTF-8"));
 
 		// Poco::Net::MailMessage will take ownership of the *PartSource files,
 		// so you don't have to worry about deleting the pointers.
@@ -152,14 +159,17 @@ public:
 		
 		string binPath = ofFilePath::getCurrentWorkingDirectory();
 		ofStringReplace(binPath, "\\", "/");
-		string koko = binPath + "/data/assets/ISMlogo.jpg";
+		string koko = binPath + ofToString(contentJson["signatureImage"]);
+		ofStringReplace(koko, "\"", "");
+
+		ofLog() << "mail content idea: " << koko;
 
 		Poco::Net::FilePartSource *image = new Poco::Net::FilePartSource(koko, "image/jpeg");
 		image->headers().add("Content-ID", "<image>");
 		message->addPart("", image, Poco::Net::MailMessage::CONTENT_INLINE, Poco::Net::MailMessage::ENCODING_BASE64);
 
 		// Add an additional header, just because we can.
-		message->add("X-Mailer", "Ziraat Bankası Müzesi");
+		//message->add("X-Mailer", "Ziraat Bankası Müzesi TEST");
 
 		// Add the message to our outbox.
 		smtp.send(message);
@@ -170,7 +180,7 @@ public:
 	/// it includes OpenGL calls (ofDrawBitmapString).
 	void draw()
 	{
-		stringstream ss;
+		/*stringstream ss;
 
 		ss << "I am a slowly increasing thread. " << endl;
 		ss << "My current count is: ";
@@ -193,7 +203,7 @@ public:
 			ofLogWarning("threadedFunction()") << "Unable to lock mutex.";
 		}
 
-		ofDrawBitmapString(ss.str(), 50, 56);
+		ofDrawBitmapString(ss.str(), 50, 56);*/
 	}
 
 
