@@ -16,6 +16,11 @@ public:
 	string getText() {
 		return drawingText;
 	}
+
+	void setInputFieldText(string str) {
+		inputField.setDrawingText(str);
+	}
+
 	void setActive(bool state) {
 		active = state;
 		inputField.setActive(state);
@@ -181,6 +186,7 @@ private:
 
 					// ENTER Key pressed
 					ofNotifyEvent(ON_TEXT_RETURN, drawingText, this);
+					this->text.clear();
 				}
 				else {
 					text.push_back(key);
