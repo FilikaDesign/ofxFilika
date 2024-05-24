@@ -1,0 +1,12 @@
+{
+  "host": "smtp.gmail.com",
+  "port": 465,
+  "encryption": "SSLTLS",
+  "timeout": 30000,
+  "message-send-delay": 100,
+  "authentication": {
+    "username": "filikatasarim@gmail.com",
+    "password": "udmvssifbwgdyxyq",
+    "type": "AUTH_LOGIN"
+  }
+}
