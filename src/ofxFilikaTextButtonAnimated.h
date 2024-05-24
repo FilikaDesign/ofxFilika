@@ -142,6 +142,8 @@ public:
 	ofxFilikaTextButtonAnimated() {
 		bId = 0;
 		isSelected = false;
+        
+        Tweenzor::init();
 	}
 
 	// deconstructer
@@ -149,9 +151,11 @@ public:
 		//delete f;
 		//cout << "I'm deleted" << endl;
 		//Sleep(2);
-
-		Tweenzor::removeTween(&tAlpha);
-		Tweenzor::removeTween(&tAnimPosX);
+        
+        if(Tweenzor::getSize() > 0 ) {
+            Tweenzor::removeTween(&tAlpha);
+            Tweenzor::removeTween(&tAnimPosX);
+        }
 	}
 
 	//--------------------------------------------------------------
@@ -197,7 +201,7 @@ public:
 
 		myText.init(_f);
 		myText.setLineHeight(_fontSize);
-		myText.setText(txt);
+		myText.setHtmlText(txt);
 		myText.wrapTextX(wt);
 
 		ofSetCircleResolution(wt);
@@ -252,7 +256,8 @@ public:
 	// SETTERS & GETTERS
 	////////////////////////////////////////////////
 	void draw(int _x, int _y) {
-
+        Tweenzor::update(ofGetElapsedTimeMillis());
+        
 		xpos = _x;
 		ypos = _y;
 
@@ -269,7 +274,8 @@ public:
 		ofPushStyle();
 		ofEnableAlphaBlending();
 
-		ofSetColor(ofColor(gRed.r, gRed.g, gRed.b, tAlpha));
+		//ofSetColor(ofColor(gRed.r, gRed.g, gRed.b, tAlpha));
+        ofSetColor(ofColor(255, tAlpha));
 		int moveFac;
 		if (myText.lines.size() > 1) {
 			moveFac = -25;
@@ -289,10 +295,10 @@ public:
 		// Debugging
 		/*ofSetColor(ofColor::red);
 		ofDrawRectangle(-wt * 0.5, -ht * 0.5, wt, ht);*/
-
+        
 		ofEnableAlphaBlending();
 		textFbo.begin();
-		ofClear(0, 0);
+		ofClear(mainColor.r, mainColor.g, mainColor.b, 0);
 		myText.setColor(mainColor.r, mainColor.g, mainColor.b, mainColor.a);
 		myText.draw(tAnimPosX, 0);
 		textFbo.end();
@@ -300,6 +306,7 @@ public:
 		textFbo.getTexture().setAlphaMask(mask.getTexture());
 
 		textFbo.draw(0, -ht * 0.5);
+        
 
 		/*if (isSelected) {
 			ofScale((1/ scaleFac), (1 / scaleFac));

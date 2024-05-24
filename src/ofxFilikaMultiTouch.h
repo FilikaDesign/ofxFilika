@@ -4,8 +4,9 @@
  *
  * Created by Robert Xiao on August 24, 2015.
  */
-
+#ifdef WIN32
 #pragma once
 
 void ofxWin10TouchSetup(bool switchWindow = false);
 void ofxWin10SetActiveWindow(string src = "");
+#endif

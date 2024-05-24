@@ -1,6 +1,11 @@
 #pragma once
 /* TYPE DEFINITIONS */
 typedef enum {
+    LEFT_TO_RIGHT,
+    RIGHT_TO_LEFT
+} ofxFilikaScrollDir;
+
+typedef enum {
 	SHIFT,
 	DEL,
 	ENTER

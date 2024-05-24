@@ -6,7 +6,21 @@
 #include "ofxTweenzor.h"
 
 class ofxFilikaCounter : public ofxFilikaEvents {
+    float alphaFlash = 0;
+
+    int counterVal = -9999;
+    int startVal, endVal;
+
+    ofTrueTypeFont* f;
+    int wt, ht;
+    ofColor textColor = ofColor(255,255,255,200);
+    int size;
+    
+    bool disableCounter = true;
+    ofxFilikaUtils notifier;
+    
 public:
+    
 	void setup(int start, int stop, ofTrueTypeFont & _f) {
 		startVal = start;
 		endVal = stop;
@@ -15,12 +29,6 @@ public:
 
 		// must call this before adding any tweens //
 		Tweenzor::init();
-
-		
-	}
-
-	void setStartCounterLimit(int val) {
-		startVal = val;
 	}
 
 	void update() {
@@ -61,10 +69,10 @@ public:
 		if (!disableCounter) {
 			ofPushStyle();
 			wt = f->getStringBoundingBox(ofToString(counterVal), 0, 0).getWidth();
-			ht = f->getStringBoundingBox("X", 0, 0).getHeight();
+			ht = f->getStringBoundingBox("X", 0, 0).getHeight() ;
 
 			ofSetColor(0, 0, 0, 180);
-			ofDrawCircle(x, y, ht + sin(ofGetElapsedTimef() * 6) * 10);
+			ofDrawCircle(x, y, ht * 1.3 + sin(ofGetElapsedTimef() * 5) * 5);
 
 			ofSetColor(textColor);
 			f->drawString(ofToString(counterVal), x - wt * 0.5, y + ht * 0.5 - 5);
@@ -78,6 +86,9 @@ public:
 
 	void startCounter() { disableCounter = false; counterVal = startVal + 1;}
 	void stopCounter() { disableCounter = true; }
+    void setStartCounterLimit(int val) {
+        startVal = val;
+    }
 	//void restartCounter() {}
 private:
 	void onCompleteFlash(float* arg) {
@@ -93,20 +104,7 @@ private:
 
 		Tweenzor::removeCompleteListener(Tweenzor::getTween(&alphaFlash));
 		// Notify Event
-		ofNotifyEvent(ON_COUNTER_DONE);
+		ofNotifyEvent(ofxFilikaEvents::ON_COUNTER_DONE);
 
 	}
-
-	float alphaFlash = 0;
-
-	int counterVal = -9999;
-	int startVal, endVal;
-
-	ofTrueTypeFont* f;
-	int wt, ht;
-	ofColor textColor = ofColor(255,255,255,200);
-	int size;
-	
-	bool disableCounter = true;
-	ofxFilikaUtils notifier;
 };

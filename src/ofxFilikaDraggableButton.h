@@ -3,8 +3,11 @@
 //  drawingBoothv1
 //
 //  Created by alp tugan on 10/01/18.
+// 
 //
-//
+//  Update: 04.02.2024
+//  Update: 06.02.2024
+
 #ifndef ofxFilikaDraggableButton_h
 #define ofxFilikaDraggableButton_h
 
@@ -13,7 +16,10 @@
 #include "ofxFilikaConstants.h"
 
 
-
+struct dragEvent {
+    glm::vec2 p;
+    int _id;
+};
 
 
 class ofxFilikaDraggableButton {
@@ -30,6 +36,7 @@ private:
     bool isEnabledInteraction;
     string imgPath;
     string pivot;
+    ofxFilikaAlignment pivotP;
     bool isDown;
     bool isDragging;
     bool isDraggingV;
@@ -47,7 +54,7 @@ public:
 
 	ofEvent<int> BUTTON_TOUCH_DOWN;
 	ofEvent<int> BUTTON_TOUCH_UP;
-    ofEvent<glm::vec2> BUTTON_DRAGGING;
+    ofEvent<dragEvent> BUTTON_DRAGGING;
 
 	ofColor mainColor;
     ofColor _OVER_COLOR;
@@ -136,16 +143,18 @@ public:
 		bgMode = _mode;
 	}
     
-    void setButtonSize(int ww, int hh) {
+    void setButtonSize(int ww, int hh, glm::vec2 _bgSz = glm::vec2(-1,-1)) {
         
         imge.resize(ww,hh);
-        imgePassive.resize(ww,hh);
+        if(imgePassive.getWidth() != 0)
+            imgePassive.resize(ww,hh);
         
         _w = ww;
         _h = hh;
-        
+
         setInteractionArea(glm::vec2(_w, _h));
         setPivot(pivot);
+        setPivotPoint(pivotP);
     }
 
 	void setImage(string src) {
@@ -174,16 +183,31 @@ public:
 		_PRESS_COLOR = _pressedColor;
 	}
 
+    
+    // Depreciated
+    // Use setPivotPoint(ofxFilikaAlignment _pivot)
 	void setPivot(string _pivot) {
         pivot = _pivot;
 		if (_pivot == "center") {
-			pivotPoint.x = getWidth() * 0.5;
-			pivotPoint.y = getHeight() * 0.5;
+			pivotPoint.x = -getWidth() * 0.5;
+			pivotPoint.y = -getHeight() * 0.5;
         }else if (_pivot == "tl") {
             pivotPoint.x = 0;
             pivotPoint.y = 0;
         }
 	}
+
+    
+    void setPivotPoint(ofxFilikaAlignment _pivot) {
+        pivotP = _pivot;
+        if (pivotP == ofxFilikaAlignment::CENTER) {
+            pivotPoint.x = -getWidth() * 0.5;
+            pivotPoint.y = -getHeight() * 0.5;
+        }else if (ofxFilikaAlignment::TOP_LEFT) {
+            pivotPoint.x = 0;
+            pivotPoint.y = 0;
+        }
+    }
 
     void setInteractionArea(glm::vec2 _a) {
 		interactionArea = _a;
@@ -217,6 +241,14 @@ public:
 	string getSourcePath() {
 		return imgPath;
 	}
+    
+    bool getVertDraggingEnabled() {
+        return isDraggingV;
+    }
+    
+    bool getHorzDraggingEnabled() {
+        return isDraggingH;
+    }
 
 	bool getIsEnabled() {
 		return isEnabledInteraction;
@@ -290,6 +322,8 @@ public:
 		//isMouseEnabled = true;
 //#endif
         isEnabledInteraction = true;
+        
+        // Set button mode
         buttonMode = ofxFilikaButtonMode::BUTTON_MODE_SHAPE_ROUNRECT;
         
         mainColor = _mainColor;
@@ -348,7 +382,11 @@ public:
 		imgPath = _imgPath;
 
 		btnAnimT = 0.125;
-		bgMode = ofxFilikaBgMode::NONE;
+        
+        if(_bgSize.x == -1)
+            bgMode = ofxFilikaBgMode::NONE;
+        else
+            bgMode = ofxFilikaBgMode::ROUNDRECT;
 
 
 		if(imgPath != "")
@@ -385,6 +423,7 @@ public:
 		interactionArea.y = _h;
 
 		setPivot("center");
+        setPivotPoint(ofxFilikaAlignment::CENTER);
 	}
 
 	////////////////////////////////////////////////
@@ -399,29 +438,31 @@ public:
 		
 		ofPushMatrix();
 
-		ofTranslate(xpos, ypos); // Move container to specified position
-
-		if (isAnimatable) // Set container animatable or not animatable : Default: true
-			scaleFac += (targetScale - scaleFac) * 0.8;
-
+		ofTranslate(_x, _y); // Move container to specified position
+        if (isAnimatable) {// Set container animatable or not animatable : Default: true
+            scaleFac += (targetScale - scaleFac) * 0.8;
+        }
+        
 		ofScale(scaleFac, scaleFac); // Scale Value of the container
-
+        ofSetColor(mainColor.r, mainColor.g, mainColor.b, _bgOpacity);
 		if (bgMode == ofxFilikaBgMode::CUSTOM) { // Set background color and shape ROUNDED RECTANGLE
 			ofPushMatrix();
 			ofRotateDeg(45);
-			ofSetColor(mainColor);
 			ofDrawRectRounded(-bgSize.x*0.5, -bgSize.y*0.5, bgSize.x, bgSize.y, 30);
 			ofPopMatrix();
 		}
 		else if (bgMode == ofxFilikaBgMode::RECTANGLE) { // Set background color and shape RECTANGLE
 			ofPushMatrix();
-			ofSetColor(mainColor);
 			ofDrawRectangle(-bgSize.x*0.5, -bgSize.y*0.5, bgSize.x, bgSize.y);
 			ofPopMatrix();
 		}
+        else if (bgMode == ofxFilikaBgMode::ROUNDRECT) { // Set background color and shape RECTANGLE
+            ofPushMatrix();
+            ofDrawRectRounded(ofRectangle(-bgSize.x*0.5, -bgSize.y*0.5, bgSize.x, bgSize.y), sbRoundness, sbRoundness, sbRoundness, sbRoundness);
+            ofPopMatrix();
+        }
 		else if (bgMode == ofxFilikaBgMode::ELLIPSE) { // Set background color and shape ELLIPSE
 			ofPushMatrix();
-			ofSetColor(mainColor);
 			ofDrawEllipse(0, 0, bgSize.x, bgSize.y);
 			ofPopMatrix();
 		}
@@ -429,23 +470,29 @@ public:
 		ofSetColor(255, 255); // Add passive mode image
         if(buttonMode == ofxFilikaButtonMode::BUTTON_MODE_IMAGE) {
             if (!isPassiveMode) {
-				if (pivot == "center") {
+				if (pivot == "center" || pivotP == ofxFilikaAlignment::CENTER) {
 					imge.draw(-imge.getWidth() * 0.5, -imge.getHeight() * 0.5);
 				}
-				else if (pivot == "tl") {
+				else if (pivot == "tl" || pivotP == ofxFilikaAlignment::TOP_LEFT) {
 					imge.draw(0, 0);
 				}
 			}else{
-                if (pivot == "center") {
+                if (pivot == "center" || pivotP == ofxFilikaAlignment::CENTER) {
                     imgePassive.draw(-imgePassive.getWidth() * 0.5, -imgePassive.getHeight() * 0.5);
                 }
-                else if (pivot == "tl") {
+                else if (pivot == "tl" || pivotP == ofxFilikaAlignment::TOP_LEFT) {
                     imgePassive.draw(0, 0);
                 }
 			}
         }else if(buttonMode == ofxFilikaButtonMode::BUTTON_MODE_SHAPE_ROUNRECT) {
-            ofSetColor(mainColor);
-            ofDrawRectRounded(ofRectangle(0, 0, _w, _h), sbRoundness, sbRoundness, sbRoundness, sbRoundness);
+            ofSetColor(mainColor.r, mainColor.g, mainColor.b, _bgOpacity);
+            if (pivot == "center" || pivotP == ofxFilikaAlignment::CENTER) {
+                //ofTranslate(xpos, ypos);
+                ofDrawRectRounded(ofRectangle(-getWidth() * 0.5, -getHeight() * 0.5, _w, _h), sbRoundness, sbRoundness, sbRoundness, sbRoundness);
+            }
+            else if (pivot == "tl" || pivotP == ofxFilikaAlignment::TOP_LEFT) {
+                ofDrawRectRounded(ofRectangle(0, 0, _w, _h), sbRoundness, sbRoundness, sbRoundness, sbRoundness);
+            }
         }
 		
 		ofPopMatrix();
@@ -471,7 +518,7 @@ public:
 	//--------------------------------------------------------------
 	void touchUp(ofTouchEventArgs & touch) {
 		//hitReleased(touch.x, touch.y);
-		hitReleasedOutside();
+		hitReleasedOutside(-1, -1);
 	}
 
 	//--------------------------------------------------------------
@@ -480,7 +527,7 @@ public:
 
 	//--------------------------------------------------------------
 	void touchCancelled(ofTouchEventArgs & touch) {
-		hitReleasedOutside();
+		hitReleasedOutside(-1, -1);
 	}
 
 
@@ -496,11 +543,16 @@ public:
 
 	//--------------------------------------------------------------
 	void mouseExited(ofMouseEventArgs & args) {
-		hitReleasedOutside();
+		hitReleasedOutside(args.x, args.y);
 	}
 	//--------------------------------------------------------------
 	void mouseMoved(ofMouseEventArgs & args) {
-        
+        if (hit(args.x, args.y)) {
+            mainColor = _OVER_COLOR;
+        }else{
+            mainColor = _OUT_COLOR;
+            isDown = false;
+        }
 	}
 
 	//--------------------------------------------------------------
@@ -517,7 +569,7 @@ public:
 	//--------------------------------------------------------------
 	void mouseReleased(ofMouseEventArgs & args) {
 
-		hitReleasedOutside();
+		hitReleasedOutside(args.x, args.y);
 	}
     
     ////////////////////////////////////////////////
@@ -532,21 +584,37 @@ public:
 			if (isDraggingH) {
 				xpos = _x - saveX;
 			}
+            targetScale = _scaleMinVal;
 			glm::vec2 p = glm::vec2(xpos, ypos);
-			ofNotifyEvent(BUTTON_DRAGGING, p, this);
+            dragEvent e;
+            e._id = this->bId;
+            e.p   = p;
+			ofNotifyEvent(BUTTON_DRAGGING, e, this);
         }
     }
     ////////////////////////////////////////////////
     // CONTAINER PRESSED HANDLER
     ////////////////////////////////////////////////
     void hitBegin(float touch_x, float touch_y) {
+        
         if (hit(touch_x, touch_y)) {
             // Save for Dragging
             if(isDraggingV || isDraggingH) {
-                saveX = touch_x - xpos;
-                saveY = touch_y - ypos;
+                if (pivot == "center" || pivotP == ofxFilikaAlignment::CENTER) {
+                    if(buttonMode == ofxFilikaButtonMode::BUTTON_MODE_SHAPE_ROUNRECT) {
+                        saveX = touch_x - xpos + pivotPoint.x;
+                        saveY = touch_y - ypos + pivotPoint.y;
+                    }
+                    else if(buttonMode == ofxFilikaButtonMode::BUTTON_MODE_IMAGE) {
+                        saveX = touch_x - xpos + pivotPoint.x;
+                        saveY = touch_y - ypos + pivotPoint.x;
+                    }
+                }else if (pivot == "tl" || pivotP == ofxFilikaAlignment::TOP_LEFT) {
+                    saveX = touch_x - xpos;
+                    saveY = touch_y - ypos;
+                }
             }
-            
+                
             
             //if (isAnimatable)
             targetScale = _scaleMinVal;
@@ -563,33 +631,39 @@ public:
 	// CONTAINER RELEASED HANDLER
 	////////////////////////////////////////////////
 	void hitReleased(float touch_x, float touch_y) {
-		
+        
 		if (hit(touch_x, touch_y)) {
 			
+            
 			if (isDown)
 			{
 				targetScale = _scaleMaxVal;
 				ofNotifyEvent(BUTTON_TOUCH_UP, bId, this);
 				isDown = false;
                 
-                mainColor = _OUT_COLOR;
-                
-				//cout << "isUp" << isDown << endl;
+                //mainColor = _OUT_COLOR;
+                mainColor = _OVER_COLOR;
 			}
 			
 		}
 	}
 
-	void hitReleasedOutside() {
+	void hitReleasedOutside(float touch_x, float touch_y) {
 		
 		if (isDown)
 		{
-			targetScale = _scaleMaxVal;
-			
-			isDown = false;
-			//cout << "outside " << isDown << endl;
-            mainColor = _OUT_COLOR;
-			ofNotifyEvent(BUTTON_TOUCH_UP, bId, this);
+            targetScale = _scaleMaxVal;
+
+            if (!hit(touch_x, touch_y)) {
+                
+                isDown = false;
+                
+                mainColor = _OUT_COLOR;
+                ofNotifyEvent(BUTTON_TOUCH_UP, this->bId, this);
+            }else{
+                mainColor = _OVER_COLOR;
+                ofNotifyEvent(BUTTON_TOUCH_UP, this->bId, this);
+            }
 		}
 	}
 
@@ -597,38 +671,32 @@ public:
 	// HIT DETECTION
 	////////////////////////////////////////////////
 	bool hit(int _x, int _y) {
-        if(pivot == "center")
-            result = (_x < xpos + interactionArea.x * 0.5 && _x > xpos - interactionArea.x * 0.5 && _y > ypos - interactionArea.y * 0.5 && _y < ypos + interactionArea.y * 0.5) ? true : false;
         
-		if (pivot == "tl") {
-			if (_w == interactionArea.x && _h == interactionArea.y) {
+        if(pivot == "center" || pivotP == ofxFilikaAlignment::CENTER)
+            result = (_x < xpos + getWidth() && _x > xpos && _y > ypos && _y < ypos + getHeight()) ? true : false;
+        
+		if (pivot == "tl" || pivotP == ofxFilikaAlignment::TOP_LEFT) {
+			if (_w <= interactionArea.x && _h <= interactionArea.y) {
 				result = (_x < xpos + interactionArea.x && _x > xpos && _y > ypos && _y < ypos + interactionArea.y) ? true : false;
 			}
 			
-			if(_w < interactionArea.x || _h < interactionArea.y) {
-				result = (_x < xpos + _w + (interactionArea.x - _w) * 0.5 && _x > xpos - (interactionArea.x - _w) * 0.5 && _y > ypos && _y < ypos + interactionArea.y) ? true : false;
-			}
-		}
+			/*if(_w < interactionArea.x || _h < interactionArea.y) {
+				result = (_x < xpos + (interactionArea.x) * 0.5 && _x > xpos - (interactionArea.x) * 0.5 && _y > ypos && _y < ypos + interactionArea.y) ? true : false;
+                ofLog() << "result2: " << interactionArea << result;
 
+			}*/
+		}
 		return result;
 	}
+    
+    bool getButtonState() {
+        return isDown;
+    }
 
 	////////////////////////////////////////////////
 	// DISABLE INTERACTION
 	////////////////////////////////////////////////
 	void disableInteraction() {
-		/*if (isEnabledInteraction) {
-			if(isMouseEnabled)
-				ofUnregisterMouseEvents(this);
-			
-			if(isTouchEnabled)
-				ofUnregisterTouchEvents(this);
-
-			isEnabledInteraction = false;
-		}*/
-		//ofUnregisterMouseEvents(this);
-		//ofUnregisterTouchEvents(this);
-
 		disableMouseEvents();
 		disableTouchEvents();
 		isEnabledInteraction = false;
@@ -638,20 +706,11 @@ public:
 	// ENABLE INTERACTION
 	////////////////////////////////////////////////
 	void enableInteraction() {
-		/*if (!isEnabledInteraction) {
-			if (isMouseEnabled)
-				ofRegisterMouseEvents(this);
-
-			if (isTouchEnabled)
-				ofRegisterTouchEvents(this);
-
-			isEnabledInteraction = true;
-		}*/
-		//ofRegisterMouseEvents(this);
-		//ofRegisterTouchEvents(this);
 		enableMouseEvents();
 		enableTouchEvents();
 		isEnabledInteraction = true;
+        
+        
 	}
 
 

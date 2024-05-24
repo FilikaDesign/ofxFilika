@@ -149,12 +149,12 @@ public:
 	}
 
 	//--------------------------------------------------------------
-	bool ofxFilikaInteractiveContainer::isMouseOver() const {
+    bool isMouseOver() const {
 		return _isMouseOver;
 	}
 
 	//--------------------------------------------------------------
-	bool ofxFilikaInteractiveContainer::isMousePressed(int mouseButton = 0) const {
+    bool isMousePressed(int mouseButton = 0) const {
 		if (_isMousePressed.find(mouseButton) == _isMousePressed.end()) return false;
 		return _isMousePressed.at(mouseButton);
 	}

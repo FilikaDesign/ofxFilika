@@ -3,7 +3,7 @@
 
 class ofxFilikaEvents
 {
-public:
+public:    
 	ofEvent<void> ON_RELEASE;
 	ofEvent<void> ON_PRESS;
 	ofEvent<void> ON_HOVER;

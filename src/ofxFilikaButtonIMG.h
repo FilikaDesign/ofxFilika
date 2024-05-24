@@ -7,12 +7,17 @@
 
 
 class ofxFilikaButtonIMG : public ofxFilikaInteractiveContainer, public ofxFilikaEvents {
+private:
+    float buttonAlpha;
 public:
 	float sFac;
 	ofImage btnTex;
+    
 	//ofxThreadedImageLoader * loader;
 
-	ofxFilikaButtonIMG() {}
+	ofxFilikaButtonIMG() {
+        buttonAlpha = 255;
+    }
 	//ofxFilikaButtonIMG(ofxFilikaButtonIMG&&) = default;
 	//ofxFilikaButtonIMG(const ofxFilikaButtonIMG &) = default;
 
@@ -23,7 +28,8 @@ public:
 	~ofxFilikaButtonIMG() {
 		//loader.stopThread();
 	}
-
+    
+    void setButtonAlpha(float val) {buttonAlpha = val;}
 	void setup(string src) {
 		// Override setup function
 		enableMouseEvents();	// to enable mouse events
@@ -46,6 +52,7 @@ public:
 		ofPushMatrix();
 		ofTranslate(this->x + this->width * 0.5, this->y + this->height*0.5);
 		ofScale(1 + sFac, 1 + sFac);
+        ofSetColor(255,buttonAlpha);
 		ofTranslate(-this->width*0.5, -this->height*0.5);
 		// Draw texture to 0,0 to enable scale animation from center
 

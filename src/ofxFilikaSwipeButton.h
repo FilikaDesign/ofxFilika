@@ -14,7 +14,7 @@ public:
 	glm::vec2 offSet;
 	glm::vec2 touchStart, touchEnd, swipeSpd;
 
-	virtual void setup(string src, int btnId, float _sFac) {
+	virtual void setup(string IMGsrc, int btnId, float _sFac) {
 		ofxFilikaButtonIMG::setup(src);
 		this->btnId = btnId;
 		orgSFac = _sFac;

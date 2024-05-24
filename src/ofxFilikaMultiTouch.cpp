@@ -6,6 +6,7 @@
  * Editted by Alp Tugan
  */
 
+#ifdef WIN32
 #pragma once
 #ifndef _WIN32_WINNT
 #define _WIN32_WINNT _WIN32_WINNT_WIN8
@@ -15,6 +16,7 @@
 #include "ofEvents.h"
 
 #include "ofxFilikaMultiTouch.h"
+
 
 static WNDPROC prevWndProc;
 
@@ -67,6 +69,7 @@ static HWND FindWindowByTitle(wstring find, bool exact = true) {
 
 	return hWnd;
 }
+
 /*
 std::string to_string(std::wstring wstr)
 {
@@ -268,3 +271,4 @@ void ofxWin10TouchSetup(bool switchWindow) {
 
 	prevWndProc = (WNDPROC)SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)pointerWndProc);
 }
+#endif

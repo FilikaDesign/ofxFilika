@@ -3,7 +3,9 @@
 //  example_ContentScroller
 //
 //  Created by alp tugan on 22.06.2019.
-//
+//  Update: 31.01.2024
+//  Update: 04.02.2024
+//  Update: 06.02.2024
 
 #ifndef ofxFilikaContentScroller_h
 #define ofxFilikaContentScroller_h
@@ -27,7 +29,8 @@ private:
 	glm::vec2 btnScrollDownPos;
 
 	bool isScrollBarVisible;
-	bool isScrollingEnabled;
+	bool isScrollingEnabled = false;
+    bool isMouseScrollEnabled = false;
 
 	int saveX, saveY, touchYScrollerPos;
 	int sbW;
@@ -45,13 +48,47 @@ private:
 
 	bool isScrollNavEnable;
 	bool isPointerDown;
+    bool isNavPointerDown = false;
 	float lastMoveYpos;
 	int dirY;
-	int moveAmountYFac;
+	int bottomMargin;
 
-	void isDraggingHandler(ofVec2f & _p) {
-		moveContent(_p);
+    int scNavSz = 0;
+    int navCorrection = 0;
+    float scrollNavSpeed;
+    
+    // USER PRESSED SCROLLER BUTTON to move the content up and down
+	void isDraggingHandler(dragEvent & _e) {
+        // If dragged button id is 0 means scrollerBtn
+        if(_e._id == 0)
+            moveContent(_e.p);
 	}
+    
+    // USER PRESSED DOWN BUTTON on SCROLLER BAR
+    void moveContentDown(int & _id) {
+        //moveContent(glm::vec2(0, scrollerRect.y + bottomMargin)); // updated 06.02.2024
+        //updateContentFbo();
+        isNavPointerDown = false;
+    }
+
+    // USER PRESSED UP BUTTON on SCROLLER BAR
+    void moveContentUp(int & _id) {
+        //moveContent(glm::vec2(0, scrollerRect.y - bottomMargin));
+        //updateContentFbo();
+        isNavPointerDown = false;
+    }
+    
+    void moveContentUpPRESSED(int & _id) {
+        //moveContent(glm::vec2(0, scrollerRect.y - bottomMargin));
+        //updateContentFbo();
+        isNavPointerDown = true;
+    }
+    
+    void moveContentDownPRESSED(int & _id) {
+        //moveContent(glm::vec2(0, scrollerRect.y + bottomMargin)); // updated 06.02.2024
+        //updateContentFbo();
+        isNavPointerDown = true;
+    }
 
 public:
 	ofxFilikaContentScroller() {
@@ -63,7 +100,7 @@ public:
 	}
 
 	void enableInteraction() {
-		if (isScrollingEnabled) {
+		//if (!isScrollingEnabled) {
 //#ifdef TOUCH_ENABLE
 			ofAddListener(ofEvents().touchMoved, this, &ofxFilikaContentScroller::touchMoveContentTouchHandler);
 			ofAddListener(ofEvents().touchDown, this, &ofxFilikaContentScroller::touchDownContentTouchHandler);
@@ -72,15 +109,15 @@ public:
 			ofAddListener(ofEvents().mouseDragged, this, &ofxFilikaContentScroller::moveMouseContent);
 			ofAddListener(ofEvents().mousePressed, this, &ofxFilikaContentScroller::moveMouseContentPressed);
 			ofAddListener(ofEvents().mouseReleased, this, &ofxFilikaContentScroller::moveMouseContentReleased);
-//#endif	
+            ofAddListener(ofEvents().mouseScrolled, this, &ofxFilikaContentScroller::moveMouseContentScroll);
+//#endif
 			ofAddListener(scrollerBtn.BUTTON_DRAGGING, this, &ofxFilikaContentScroller::isDraggingHandler);
 
 			// Scroll Nav buttons enabled
 			if (isScrollNavEnable) {
-				ofAddListener(btnScrollUp.BUTTON_TOUCH_UP, this, &ofxFilikaContentScroller::moveContentUp);
-				ofAddListener(btnScrollDown.BUTTON_TOUCH_UP, this, &ofxFilikaContentScroller::moveContentDown);
+                enableNavButtons();
 			}
-		}
+		//}
 	}
 
 	void disableInteraction() {
@@ -89,6 +126,8 @@ public:
 			ofRemoveListener(ofEvents().touchMoved, this, &ofxFilikaContentScroller::touchMoveContentTouchHandler);
 			ofRemoveListener(ofEvents().touchDown, this, &ofxFilikaContentScroller::touchDownContentTouchHandler);
 			ofRemoveListener(ofEvents().touchUp, this, &ofxFilikaContentScroller::touchUpContentTouchHandler);
+            ofRemoveListener(ofEvents().mouseScrolled, this, &ofxFilikaContentScroller::moveMouseContentScroll);
+
 //#else
 			ofRemoveListener(ofEvents().mousePressed, this, &ofxFilikaContentScroller::moveMouseContentPressed);
 			ofRemoveListener(ofEvents().mouseDragged, this, &ofxFilikaContentScroller::moveMouseContent);
@@ -99,19 +138,19 @@ public:
 
 			// Scroll Nav buttons enabled
 			if (isScrollNavEnable) {
-				ofRemoveListener(btnScrollUp.BUTTON_TOUCH_UP, this, &ofxFilikaContentScroller::moveContentUp);
-				ofRemoveListener(btnScrollDown.BUTTON_TOUCH_UP, this, &ofxFilikaContentScroller::moveContentDown);
+                disableNavButtons();
 			}
 		}
 	}
 
 
-	void setup(ofRectangle _contentRect = ofRectangle(0, 0, 0, 0), ofBaseDraws * _content = nullptr, int _sbGap = 1) {
+	void setup(ofRectangle _contentRect = ofRectangle(0, 0, 0, 0), ofBaseDraws * _content = nullptr, int _sbGap = 1, bool _isScrollNavEnable = false) {
 		this->set(_contentRect);
 		isPointerDown = false;
-		moveAmountYFac = 15;
-
-		sbGap = _sbGap;
+        isScrollNavEnable = _isScrollNavEnable;
+        bottomMargin = 15;
+        
+		sbGap = _sbGap; // issue
 		sbColor = ofColor(150, 150, 150, 60);
 		scColor = ofColor(150, 150, 150, 255);
 		sbW = 15;
@@ -120,11 +159,12 @@ public:
 		scH = 0;
 		moveAmty = 0;
 		lastMoveYpos = 0;
+        scrollNavSpeed = 1;
 
-		if (_content != nullptr)
-			setContent(_content);
-
-		enableInteraction();
+        if (_content != nullptr) {
+            setContent(_content);
+            enableInteraction();
+        }
 	}
 
 //#ifdef TOUCH_ENABLE
@@ -155,43 +195,40 @@ public:
 //#endif	
 	void pointerDown(glm::vec2 e) {
 		if (this->inside(e)) {
-			//saveX = e.x - scrollerBtn.getPos().x;
-			//saveY = ofMap(e.y, scrollBarRect.y, scrollBarRect.y + scrollBarRect.getHeight(), scrollBarRect.y + scrollBarRect.getHeight(), scrollBarRect.y) - scrollerRect.y;
-			saveY = e.y;
+			saveY = e.y + scrollerBtn.getPos().y + bottomMargin;
 			isPointerDown = true;
 		}
 	}
 
 	void pointerUp(glm::vec2 e) {
 		isPointerDown = false;
-		//lastMoveYpos = 0;
-		
 	}
 
 	void pointerMove(glm::vec2 e) {
-		if (isPointerDown && this->inside(e)) {
+		//if (isPointerDown && this->inside(e)) {
+        if (isPointerDown) {
 			if (e.y - saveY < 0) {
 				dirY = -1;
 			}
 			else {
 				dirY = 1;
 			}
-			lastMoveYpos += (moveAmountYFac * dirY);
-			//moveContent(glm::vec2(0, ofMap(e.y, scrollBarRect.y, scrollBarRect.y + scrollBarRect.getHeight(), scrollBarRect.y + scrollBarRect.getHeight(), scrollBarRect.y) - saveY), "natural");
-			moveContent(glm::vec2(0, lastMoveYpos), "natural");
+            moveContent(glm::vec2(0, (saveY - e.y) - bottomMargin));
 		}
 	}
-
-	void moveContentDown(int & _id) {
-		moveContent(glm::vec2(0, scrollerRect.y + 15));
-		updateContentFbo();
-	}
-
-	void moveContentUp(int & _id) {
-		moveContent(glm::vec2(0, scrollerRect.y - 15));
-		updateContentFbo();
-	}
-
+    
+    void moveMouseContentScroll(ofMouseEventArgs & e) {
+        if(isMouseScrollEnabled) {
+            if(e.x > this->getPosition().x && e.x < this->getPosition().x + this->getWidth() + scrollerRect.getWidth() + sbGap) {
+                if(e.scrollY < 0) {
+                    moveContent(glm::vec2(0, scrollerRect.y + scrollNavSpeed * abs(e.scrollY)));
+                }else{
+                    moveContent(glm::vec2(0, scrollerRect.y - scrollNavSpeed * abs(e.scrollY)));
+                }
+            }
+        }
+    }
+    
 	void moveContent(glm::vec2 _p, string _dir = "default") {
 
 		int maxYVal = scrollBarRect.y + scrollBarRect.height - scrollerBtn.getHeight();
@@ -211,10 +248,12 @@ public:
 			if (_p.y > maxYVal) {
 				scrollerRect.y = maxYVal;
 			}
-
-			moveAmty = scrollBarRect.y + ofMap(scrollerRect.y, scrollBarRect.y, maxYVal, scrollBarRect.y, scrollBarRect.y + content->getHeight() - scrollBarRect.height + 20)*-1;
+            
+			moveAmty = scrollBarRect.y + ofMap(scrollerRect.y, scrollBarRect.y, maxYVal, scrollBarRect.y, scrollBarRect.y + content->getHeight() - scrollBarRect.height - navCorrection + bottomMargin)*-1;
 		} else {
-			//moveAmty = scrollBarRect.y + ofMap(scrollerRect.y, maxYVal, scrollBarRect.y, scrollBarRect.y + content->getHeight() - scrollBarRect.height + 20, scrollBarRect.y)*-1;
+            // BU KISIM KULLANILMIYOR
+            // DO NOT DELETE
+            //moveAmty = scrollBarRect.y + ofMap(scrollerRect.y, maxYVal, scrollBarRect.y, scrollBarRect.y + content->getHeight() - scrollBarRect.height + 20, scrollBarRect.y)*-1;
 			moveAmty = lastMoveYpos;
 
 			// To stop content moving upwards
@@ -227,7 +266,7 @@ public:
 				moveAmty = 0;
 				lastMoveYpos = moveAmty;
 			}
-
+            
 			scrollerRect.y = ofMap(moveAmty, (content->getHeight() - scrollBarRect.height) * -1, 0, maxYVal, scrollBarRect.y);
 
 			// Stop if the content reaches to top border
@@ -251,16 +290,26 @@ private:
 		contentFbo.begin();
 		ofClear(0, 0);
 		content->draw(0, moveAmty);
+        content->draw(0, moveAmty);
 		contentFbo.end();
 	}
 public:
 	void draw() {
 		if (content != nullptr)
 		{
+            if(isScrollNavEnable && isNavPointerDown) {
+                if(btnScrollUp.getButtonState())
+                    moveContent(glm::vec2(0, scrollerRect.y - scrollNavSpeed));
+                else if(btnScrollDown.getButtonState())
+                    moveContent(glm::vec2(0, scrollerRect.y + scrollNavSpeed));
+                
+                updateContentFbo();
+            }
+            
+            // DRAW THE MASKED CONTENT
 			contentFbo.getTexture().setAlphaMask(mask.getTexture());
+            contentFbo.draw(x, y);
 			//ofDrawRectangle(x, y, width, height );
-
-			contentFbo.draw(x, y);
 
 			if (isScrollBarVisible) {
 				ofPushStyle();
@@ -287,52 +336,50 @@ public:
 	// SETTERTS & GETTERS
 	void setContent(ofBaseDraws * _content) {
 		content = _content;
-		mask.clear();
-		mask.allocate(content->getWidth(), content->getHeight(), GL_RGBA);
+		
+        // Clear the content
+        mask.clear();
+        contentFbo.clear();
+        
+        // Init Mask
+        mask.allocate(content->getWidth(), content->getHeight());
 		mask.begin();
 		ofClear(0, 0);
 		ofDrawRectangle(0, 0, width, height);
 		mask.end();
 
-		contentFbo.clear();
-		contentFbo.allocate(content->getWidth(), content->getHeight(), GL_RGBA);
+        // Init Content Fbo
+		contentFbo.allocate(content->getWidth(), content->getHeight(), GL_RGBA32F_ARB, 4);
 		contentFbo.begin();
 		ofClear(0, 0);
 		content->draw(0, 0);
+        content->draw(0, 0);
 		contentFbo.end();
 
 		// content height > Holder size ? enable scrollbar;
-		if (content->getHeight() > height) {
-
-			// Scroll Bar
-			sbH = height;
-			scrollBarRect.set(x + width + sbGap, y, sbW, sbH);
-
-			// Scroller
-			int diff = content->getHeight() - height;
-
-			scH = MAX(height - diff, 100);
-			scrollerRect.set(scrollBarRect.x, scrollBarRect.y, scW, scH);
+		if (contentFbo.getHeight() > height) {
+            calculateSizes();
 
 			// ofVec2f _size, int _id, ofColor _mainColor = ofColor(0), bool _isAnimatable = false
-			scrollerBtn.setup(ofVec2f(scrollerRect.width, scrollerRect.height), 0, scColor);
-			scrollerBtn.setColorReleased(scColor);
+			scrollerBtn.setup(glm::vec2(scrollerRect.width, scrollerRect.height), 0, scColor);
+            scrollerBtn.setDraggingVertical(true);
+            scrollerBtn.setColorReleased(scColor);
 			scrollerBtn.setColorPressed(scPressedColor);
 			scrollerBtn.setColorOver(scOverColor);
-			scrollerBtn.setPivot("tl");
 			scrollerBtn.setRoundness(sbRoundness);
-			scrollerBtn.setDraggingVertical(true);
-			scrollerBtn.setInteractionArea(ofVec2f(scrollerRect.width + 40, scrollerRect.height));
-
-			if (!isScrollingEnabled) {
-				ofAddListener(scrollerBtn.BUTTON_DRAGGING, this, &ofxFilikaContentScroller::isDraggingHandler);
+            scrollerBtn.setPivot("tl");
+            //ofLog() << "button w: " << scrollerRect.width;
+			scrollerBtn.setInteractionArea(glm::vec2(scrollerRect.width + 40 , scrollerRect.height));
+            //scrollerBtn.setInteractionArea(glm::vec2(scrollerRect.width, scrollerRect.height));
+            scrollerBtn.enableInteraction();
+			//if (!isScrollingEnabled) {
+			//	ofAddListener(scrollerBtn.BUTTON_DRAGGING, this, &ofxFilikaContentScroller::isDraggingHandler);
 				
-			}
+			//}
 
 			isScrollBarVisible = true;
 			isScrollingEnabled = true;
 
-			enableInteraction();
 		}
 		else {
 			isScrollBarVisible = false;
@@ -340,6 +387,40 @@ public:
 			isScrollingEnabled = false;
 		}
 	}
+    
+    void calculateSizes() {
+        scNavSz = 0;
+        navCorrection = 0;
+        
+        // Scroll Bar
+        sbH = height;
+        
+        if(isScrollNavEnable) {
+            scNavSz = scW;
+            btnScrollUpPos.x = x + width + sbGap;
+            btnScrollUpPos.y = y;
+            
+            btnScrollDownPos.x = x + width + sbGap;
+            btnScrollDownPos.y = y + sbH - scNavSz;
+            
+            sbH -= (scNavSz*2 + 2);
+            navCorrection = scNavSz + 1;
+        }
+        
+        scrollBarRect.set(x + width + sbGap, y + navCorrection, sbW, sbH);
+        
+        // Scroller
+        int diff = contentFbo.getHeight() - sbH;
+
+        // 50 is the minimum size of the available scroller height
+        //scH = ofMap(diff, 0, contentFbo.getHeight(), 10, sbH);
+        scH = ofMap(diff, 0, contentFbo.getHeight(), sbH, 10);
+        scrollerRect.set(scrollBarRect.x, scrollBarRect.y, scW, scH);
+    }
+    
+    void setBottomMargin(int val) {
+        bottomMargin = val;
+    }
 
 	
 	void setPositon(int _x, int _y) {
@@ -350,20 +431,14 @@ public:
 		scrollBarRect.y = y;
 
 		scrollerRect.x = scrollBarRect.x;
+        scrollerRect.y = y;
+        
 	}
 
 	void setContentRect(ofRectangle & _r) {
 		this->set(_r);
 	}
-
-	void setScrollerGap(int  _v) {
-		sbGap = _v;
-	}
-
-	void setScrollbarVisible(bool _v) {
-		isScrollBarVisible = _v;
-	}
-
+    
 	void setScrollingEnable(bool _isScrollingEnabled) {
 		isScrollingEnabled = _isScrollingEnabled;
 
@@ -373,9 +448,15 @@ public:
 			enableInteraction();
 	}
 
+    /* SCROLLER BAR BACKGROUND SETTERS */
+    void setScrollbarVisible(bool _v) {
+        isScrollBarVisible = _v;
+    }
+    
 	void setScrollbarW(int _v) {
 		scW = _v;
 		sbW = scW;
+        scrollBarRect.setWidth(sbW);
 	}
 
 	void setScrollbarCornerRadius(int _v) {
@@ -385,33 +466,116 @@ public:
 	void setScrollbarColor(ofColor _v) {
 		sbColor = _v;
 	}
-
+    
+    
+    /* SCROLLER BUTTON SETTERS */
+    void setScrollerGap(int  _v) {
+        sbGap = _v;
+    }
+    
+    void setScrollerW(int w) {
+        scrollerRect.setWidth(w);
+        scrollerBtn.setButtonSize(w, scrollerRect.getHeight());
+    }
+    
+    void setScrollerCornerRadius(int v) {
+        sbRoundness = v;
+        scrollerBtn.setRoundness(sbRoundness);
+    }
+    
 	void setScrollerColor(ofColor _idleColor, ofColor _pressedColor, ofColor _overColor) {
 		scColor = _idleColor;
 		scPressedColor = _pressedColor;
 		scOverColor = _overColor;
+        
+        scrollerBtn.setColorReleased(scColor);
+        scrollerBtn.setColorPressed(scPressedColor);
+        scrollerBtn.setColorOver(scOverColor);
+        scrollerBtn.mainColor = scColor;
 	}
 
 	/* SCROLL NAVIGATION */
 	void setScrollNavEnable(bool _isEnable) {
 		isScrollNavEnable = _isEnable;
 	}
+    
+    void setScrollNavSpeed(float _s) {
+        scrollNavSpeed = _s;
+    }
+    
+    void setScrollNavigation(bool _enable = true){
+        setScrollNavEnable(_enable);
+        
+        // Up Button
+        btnScrollUp.setup(glm::vec2(scrollerRect.width, scrollerRect.width), 1, scColor);
+        btnScrollUp.setDraggingVertical(false);
+        btnScrollUp.setDraggingHorizontal(false);
+        btnScrollUp.setColorReleased(scColor);
+        btnScrollUp.setColorPressed(scPressedColor);
+        btnScrollUp.setColorOver(ofColor(scOverColor.r, scOverColor.g, scOverColor.b, 180));
+        btnScrollUp.setRoundness(sbRoundness);
+        btnScrollUp.setPivot("tl");
+        btnScrollUp.setInteractionArea(glm::vec2(scrollerRect.width , scrollerRect.width));
+        
+        
+        // Down Button
+        btnScrollDown.setup(glm::vec2(scrollerRect.width, scrollerRect.width), 2, scColor);
+        btnScrollDown.setDraggingVertical(false);
+        btnScrollDown.setDraggingHorizontal(false);
+        btnScrollDown.setColorReleased(scColor);
+        btnScrollDown.setColorPressed(scPressedColor);
+        btnScrollDown.setColorOver(ofColor(scOverColor.r, scOverColor.g, scOverColor.b, 180));
+        btnScrollDown.setRoundness(sbRoundness);
+        btnScrollDown.setPivot("tl");
+        btnScrollDown.setInteractionArea(glm::vec2(scrollerRect.width , scrollerRect.width));
+        
+        // Enable Interaction
+        btnScrollDown.enableInteraction();
+        btnScrollUp.enableInteraction();
+        
+        // Enable Listeners
+        enableNavButtons();
+        
+        calculateSizes();
+    }
 
-	void setScrollNavigation(string _btnUpSrc, string _btnDownSrc, bool _enable = true) {
-		isScrollNavEnable = _enable;
-		btnScrollDown.setup(_btnDownSrc, 0);
-		btnScrollUp.setup(_btnUpSrc, 0);
-
-		if (isScrollNavEnable) {
-			ofAddListener(btnScrollUp.BUTTON_TOUCH_UP, this, &ofxFilikaContentScroller::moveContentUp);
-			ofAddListener(btnScrollDown.BUTTON_TOUCH_UP, this, &ofxFilikaContentScroller::moveContentDown);
-		}
-	}
+    void setScrollNavigation(string _btnUpSrc, string _btnDownSrc, bool _enable = true) {
+        isScrollNavEnable = _enable;
+        btnScrollDown.setup(_btnDownSrc, 0);
+        btnScrollUp.setup(_btnUpSrc, 0);
+        if (isScrollNavEnable) enableNavButtons();
+    }
 
 	void setScrollNavPos(glm::vec2 _upPos, glm::vec2 _downPos) {
 		btnScrollDownPos = _downPos;
 		btnScrollUpPos = _upPos;
 	}
+    
+    /* Mac touchpad or mouse scroll */
+    void setMouseScrollEnabled(bool val) {
+        isMouseScrollEnabled = val;
+    }
+    
+    // GETTERS
+    /* Mac touchpad or mouse scroll */
+    bool getMouseScrollEnabled(bool val) {
+        return isMouseScrollEnabled;
+    }
+    
+private:
+    void enableNavButtons() {
+        ofAddListener(btnScrollUp.BUTTON_TOUCH_UP, this, &ofxFilikaContentScroller::moveContentUp);
+        ofAddListener(btnScrollDown.BUTTON_TOUCH_UP, this, &ofxFilikaContentScroller::moveContentDown);
+        ofAddListener(btnScrollUp.BUTTON_TOUCH_DOWN, this, &ofxFilikaContentScroller::moveContentUpPRESSED);
+        ofAddListener(btnScrollDown.BUTTON_TOUCH_DOWN, this, &ofxFilikaContentScroller::moveContentDownPRESSED);
+    }
+    
+    void disableNavButtons() {
+        ofRemoveListener(btnScrollUp.BUTTON_TOUCH_UP, this, &ofxFilikaContentScroller::moveContentUp);
+        ofRemoveListener(btnScrollDown.BUTTON_TOUCH_UP, this, &ofxFilikaContentScroller::moveContentDown);
+        ofRemoveListener(btnScrollUp.BUTTON_TOUCH_DOWN, this, &ofxFilikaContentScroller::moveContentUpPRESSED);
+        ofRemoveListener(btnScrollDown.BUTTON_TOUCH_DOWN, this, &ofxFilikaContentScroller::moveContentDownPRESSED);
+    }
 };
 
 #endif /* ofxFilikaContentScroller_h */
