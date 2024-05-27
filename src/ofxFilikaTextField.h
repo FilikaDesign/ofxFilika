@@ -180,7 +180,7 @@ private:
         // content = new ofxTextBlock();
          content.init(this->f,this->fSize);  // Set default font for the content text box
 
-        content.setLineHeight(this->fSize + this->lineH);
+         content.setLineHeight(this->fSize + this->lineH);
          content.setColor(this->color);
          content.setHtmlText(this->txt);
          if(this->fWidth != 0) {
@@ -188,7 +188,7 @@ private:
              fbo.allocate(content.getWidth(), content.getHeight(), GL_RGBA32F_ARB, 2);
          }else{
              // Some random chars to get text height accurately for single line texts.
-             fbo.allocate(content.getWidth(), f->getStringBoundingBox("QpyRTŞ", 0, 0).getHeight(), GL_RGBA32F_ARB, 2);
+             fbo.allocate(content.getWidth(), content.getHeight() * 1.1, GL_RGBA32F_ARB, 2);
          }
          fbo.begin();
          ofClear(255,0);
